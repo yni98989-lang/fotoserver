@@ -1,33 +1,45 @@
 import os
+import asyncio
 from flask import Flask, send_file
 from telegram import Update
-from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from threading import Thread
 
 app = Flask(__name__)
 PHOTO_PATH = "last_photo.jpg"
 
-def handle_photo(update: Update, context: CallbackContext):
+# 1. Обработка фото (новый синтаксис v20+)
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.photo:
-        # Скачиваем фото в самом высоком качестве
-        photo_file = update.message.photo[-1].get_file()
-        photo_file.download(PHOTO_PATH)
-        print("Фото успешно получено и сохранено!")
+        photo_file = await update.message.photo[-1].get_file()
+        await photo_file.download_to_drive(PHOTO_PATH)
+        print("Фото обновлено!")
 
+# 2. Flask маршрут
 @app.route('/photo')
 def get_photo():
     if os.path.exists(PHOTO_PATH):
         return send_file(PHOTO_PATH, mimetype='image/jpeg')
     return "No photo yet", 404
 
-if __name__ == "__main__":
-    TOKEN = os.getenv("BOT_TOKEN")
+# Функция для запуска Telegram бота
+def run_bot():
+    token = os.getenv("BOT_TOKEN")
+    # Создаем приложение бота
+    application = ApplicationBuilder().token(token).build()
     
-    # Запуск бота
-    updater = Updater(TOKEN)
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(MessageHandler(Filters.photo, handle_photo))
-    updater.start_polling()
+    # Добавляем обработчик фото
+    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    
+    print("Бот запущен...")
+    application.run_polling()
 
-    # Запуск Flask
+if __name__ == "__main__":
+    # Запускаем бота в отдельном потоке
+    bot_thread = Thread(target=run_bot)
+    bot_thread.daemon = True
+    bot_thread.start()
+
+    # Запускаем Flask
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
