@@ -1,23 +1,42 @@
+import sys
+# Исправление для Python 3.13+: имитируем наличие удаленного модуля imghdr
+try:
+    import imghdr
+except ImportError:
+    import types
+    m = types.ModuleType("imghdr")
+    m.what = lambda file, h=None: None
+    sys.modules["imghdr"] = m
+
+import os
 from flask import Flask, send_file
-from telegram.ext import Updater, MessageHandler, Filters
+from telegram import Update
+from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 
 app = Flask(__name__)
-last_photo = None
+PHOTO_PATH = "last_photo.jpg"
 
-def photo_handler(update, context):
-    global last_photo
-    file = update.message.photo[-1].get_file()
-    file.download("last.jpg")
-    last_photo = "last.jpg"
+def handle_photo(update: Update, context: CallbackContext):
+    if update.message.photo:
+        photo_file = update.message.photo[-1].get_file()
+        photo_file.download(PHOTO_PATH)
+        print(f"Фото обновлено! Сохранено в {PHOTO_PATH}")
 
-@app.route("/photo")
+@app.route('/photo')
 def get_photo():
-    if last_photo:
-        return send_file(last_photo, mimetype="image/jpeg")
-    return "No photo yet", 404
+    if os.path.exists(PHOTO_PATH):
+        return send_file(PHOTO_PATH, mimetype='image/jpeg')
+    return "No photo uploaded yet.", 404
 
 if __name__ == "__main__":
-    updater = Updater("8625348658:AAHL39lI6tkazeRN--v3Juf8UtLnJv1lnnc")
-    updater.dispatcher.add_handler(MessageHandler(Filters.photo, photo_handler))
+    TOKEN = os.getenv("BOT_TOKEN")
+    
+    # Запуск бота
+    updater = Updater(TOKEN)
+    dispatcher = updater.dispatcher
+    dispatcher.add_handler(MessageHandler(Filters.photo, handle_photo))
     updater.start_polling()
-    app.run(host="0.0.0.0", port=5000)
+
+    # Запуск сервера
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
