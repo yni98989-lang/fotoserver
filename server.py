@@ -17,7 +17,7 @@ def get_photo():
     return "No photo yet", 404
 
 if __name__ == "__main__":
-    updater = Updater("YOUR_BOT_TOKEN")
+    updater = Updater("8625348658:AAHL39lI6tkazeRN--v3Juf8UtLnJv1lnnc")
     updater.dispatcher.add_handler(MessageHandler(Filters.photo, photo_handler))
     updater.start_polling()
     app.run(host="0.0.0.0", port=5000)
