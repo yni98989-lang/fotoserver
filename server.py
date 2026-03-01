@@ -33,7 +33,7 @@ def get_photo():
                 
                 # Сохраняем в память (буфер) как простой Baseline JPEG
                 img_io = io.BytesIO()
-                img.save(img_io, 'JPEG', quality=75, progressive=False)
+                img.save(img_io, 'JPEG', quality=50, progressive=False)
                 img_io.seek(0)
                 
                 print(f"Отправка сжатого фото: {img.size[0]}x{img.size[1]}")
