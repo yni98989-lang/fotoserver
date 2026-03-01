@@ -11,23 +11,24 @@ app = Flask(__name__)
 PHOTO_PATH = "last_photo.jpg"
 
 @app.route('/photo')
+@app.route('/photo')
 def get_photo():
     if os.path.exists(PHOTO_PATH):
         try:
             with Image.open(PHOTO_PATH) as img:
                 img = img.convert("RGB")
-                # Изменяем размер
-                img = img.resize((320, 240), Image.Resampling.LANCZOS)
+                
+                # 1. Используем NEAREST для ресайза — это даст менее детальный (легкий) файл
+                img = img.resize((320, 240), Image.Resampling.NEAREST)
                 
                 img_io = io.BytesIO()
-                # Сжатие
-                img.save(img_io, 'JPEG', quality=40, optimize=True, progressive=False)
+                # 2. Снижаем качество до 25. На экране 2.4" это будет смотреться отлично!
+                img.save(img_io, 'JPEG', quality=25, optimize=True, progressive=False)
                 img_io.seek(0)
                 
                 size = img_io.getbuffer().nbytes
-                print(f"--- ОТПРАВКА: {size} байт ---")
+                print(f"--- ОТПРАВКА НА ESP32: {size} байт ---")
                 
-                # Создаем ответ с отключенным кешированием
                 response = make_response(send_file(img_io, mimetype='image/jpeg'))
                 response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
                 return response
@@ -35,7 +36,6 @@ def get_photo():
             print(f"Ошибка: {e}")
             return "Error", 500
     return "No photo", 404
-
 # Остальная часть кода (handle_photo, run_flask, main) без изменений...
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.photo:
